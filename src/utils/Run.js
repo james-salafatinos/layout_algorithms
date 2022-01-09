@@ -1,0 +1,3 @@
+setup();
+init();
+animate();
