@@ -29,6 +29,8 @@ class Node {
         this.mesh.position.y = this.pos.y
         this.mesh.position.z = this.pos.z
 
+        this.mesh.material.color = new THREE.Color(`hsl(${100 - (-1*this.velocity.length())*10**3}, 100%, 50%)`);
+
     }
 
     // Mover applyForce
@@ -62,6 +64,7 @@ class Node {
         let vec = this.pos.clone().sub(otherObject.pos.clone()).normalize()
         let distance = this.pos.clone().distanceTo(otherObject.pos.clone())
         distance = this._constrain(distance, 2, 5)
+        
         // console.log(vec,distance)
         // distance.clamp(2.0, 5.0);
         // console.log(GRAVITY, this.mass , otherObject.mass , distance )

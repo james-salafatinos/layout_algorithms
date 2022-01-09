@@ -64,8 +64,8 @@ function init() {
 
         //START       
         // console.log("Creating blank Box Grid")
-        let sq_width = 12
-        let spacing = 3
+        let sq_width = 4
+        let spacing = 25
 
         //Generate Grid of Boxes
         let x = 0
