@@ -41,7 +41,7 @@ function animate() {
     //PHYSICS UPDATE
     if (physicsObjectsCreated) {
         //LIMIT FRAMERATE
-        if (frameIndex % 10 == 0) {
+        if (frameIndex % 1 == 0) {
             //SETUP TEMPORARY FORCE BIN
             let objectForces = []
             //ITERATE THROUGH VERTICES
@@ -57,9 +57,9 @@ function animate() {
 
                         //CONSTRAIN D
 
-                        d = constrain(d, 50, 100)
+                        d = constrain(d, 5, 10)
 
-                        let strength = .002 * ((m0 * m1)/ d**2)
+                        let strength = .00002 * ((m0 * m1)/ d**2)
                         let attr_force = v.multiplyScalar(strength)
                         //ADD TO BUILDING NODE FORCE
                         i_force.add(attr_force)

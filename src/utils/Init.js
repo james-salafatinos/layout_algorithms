@@ -43,52 +43,52 @@ function init() {
 
     let createGrid = () => {
 
-        let p_0 = new Node(20, -10, 10, 10)
-        let mesh_0 = p_0.createSphere()
+        // let p_0 = new Node(20, -10, 10, 10, .01,0,0)
+        // let mesh_0 = p_0.createSphere()
 
-        let p_1 = new Node(100, 10, -10, 10)
-        let mesh_1 = p_1.createSphere()
+        // let p_1 = new Node(30, 10, -10, 10, 0,-.01,0)
+        // let mesh_1 = p_1.createSphere()
 
-        let p_2 = new Node(5, 10, 10, -10)
-        let mesh_2 = p_2.createSphere()
+        // let p_2 = new Node(21, 10, 10, -10, 0, 0,.01)
+        // let mesh_2 = p_2.createSphere()
 
-        scene.add(mesh_0)
-        scene.add(mesh_1)
-        scene.add(mesh_2)
-        objects.push(mesh_0)
-        objects.push(mesh_1)
-        objects.push(mesh_2)
+        // scene.add(mesh_0)
+        // scene.add(mesh_1)
+        // scene.add(mesh_2)
+        // objects.push(mesh_0)
+        // objects.push(mesh_1)
+        // objects.push(mesh_2)
         
-        physicsObjects.push(p_0, p_1, p_2)
-        physicsObjectsCreated = true
+        // physicsObjects.push(p_0, p_1, p_2)
+        // physicsObjectsCreated = true
 
         //START       
-        // // console.log("Creating blank Box Grid")
-        // let sq_width = 12
-        // let spacing = 3
+        // console.log("Creating blank Box Grid")
+        let sq_width = 12
+        let spacing = 3
 
-        // //Generate Grid of Boxes
-        // let x = 0
-        // let z = 0
-        // for (let i = 0; i < sq_width; i++) {
-        //     x = x + spacing
-        //     for (let j = 0; j < sq_width; j++) {
-        //         z = z + spacing
-        //         // let p = Sphere(x, 2, z, 1, 10, 10)
-        //         // scene.add(p)
-        //         // objects.push(p)
+        //Generate Grid of Boxes
+        let x = 0
+        let z = 0
+        for (let i = 0; i < sq_width; i++) {
+            x = x + spacing
+            for (let j = 0; j < sq_width; j++) {
+                z = z + spacing
+                // let p = Sphere(x, 2, z, 1, 10, 10)
+                // scene.add(p)
+                // objects.push(p)
 
-        //         //INITIALIZE PHYSICS NODE
-        //         let p = new Node(Math.random()*20, x, Math.random()*10, z)
-        //         let mesh = p.createSphere()
+                //INITIALIZE PHYSICS NODE
+                let p = new Node(Math.random()*20, x, Math.random()*10, z, 0, 0)
+                let mesh = p.createSphere()
 
-        //         scene.add(mesh)
-        //         objects.push(mesh)
-        //         physicsObjects.push(p)
-        //         physicsObjectsCreated = true
-        //     }
-        //     z = z - sq_width * spacing
-        // }
+                scene.add(mesh)
+                objects.push(mesh)
+                physicsObjects.push(p)
+                physicsObjectsCreated = true
+            }
+            z = z - sq_width * spacing
+        }
         //END
     }
     setRaycaster = (event) => {

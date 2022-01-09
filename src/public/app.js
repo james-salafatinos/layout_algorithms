@@ -55,11 +55,11 @@ let setZoom
 let constrain
 
 class Node {
-    constructor(m, x, y, z) {
+    constructor(m, x, y, z, ivx = 0, ivy = 0, ivz = 0) {
         this.mass = m
         this.pos = new THREE.Vector3(x, y, z)
         this.velocity = new THREE.Vector3(0,0,0)
-        this.acceleration = new THREE.Vector3(0,0,0)
+        this.acceleration = new THREE.Vector3(ivx,ivy,ivz)
         this.dirVector = new THREE.Vector3()
         this.mesh
         this.lookDir
@@ -71,7 +71,7 @@ class Node {
             depthTest: true,
             side: THREE.DoubleSide
         });
-        let geo = new THREE.SphereGeometry(this.mass/10, 5, 5)
+        let geo = new THREE.SphereGeometry(this.mass/20, 5, 5)
         let mesh = new THREE.Mesh(geo, mat)
         mesh.position.x = this.x
         mesh.position.y = this.y
@@ -104,6 +104,7 @@ class Node {
     getUnitVectorTo = function (otherObject) {
         var dir = new THREE.Vector3(); // create once an reuse it
         dir.subVectors(this.pos, otherObject.pos).normalize();
+        dir.multiplyScalar(-1)
         return dir
     }
 
@@ -116,11 +117,11 @@ class Node {
 
         let vec = this.pos.clone().sub(otherObject.pos.clone()).normalize()
         let distance = this.pos.clone().distanceTo(otherObject.pos.clone())
-        distance = this._constrain(distance, 2, 50)
+        distance = this._constrain(distance, 2, 5)
         // console.log(vec,distance)
         // distance.clamp(2.0, 5.0);
         // console.log(GRAVITY, this.mass , otherObject.mass , distance )
-        let strength = (.2 * this.mass * otherObject.mass) / (distance * distance);
+        let strength = (.02 * this.mass * otherObject.mass) / (distance * distance);
         // // Trekkkraften: Jo større masse jo større kraft. Jo lenger avstand jo mindre kraft
         // console.log(strength)
         let force = vec.clone().multiplyScalar(strength);
@@ -131,8 +132,8 @@ class Node {
 
 
     update = function () {
-        this.velocity.add(this.acceleration);
-        this.pos.add(this.velocity);
+        this.velocity.add(this.acceleration.clone());
+        this.pos.add(this.velocity.clone());
         this.acceleration.multiplyScalar(0);
     }
 }
@@ -247,52 +248,52 @@ function init() {
 
     let createGrid = () => {
 
-        let p_0 = new Node(20, -10, 10, 10)
-        let mesh_0 = p_0.createSphere()
+        // let p_0 = new Node(20, -10, 10, 10, .01,0,0)
+        // let mesh_0 = p_0.createSphere()
 
-        let p_1 = new Node(100, 10, -10, 10)
-        let mesh_1 = p_1.createSphere()
+        // let p_1 = new Node(30, 10, -10, 10, 0,-.01,0)
+        // let mesh_1 = p_1.createSphere()
 
-        let p_2 = new Node(5, 10, 10, -10)
-        let mesh_2 = p_2.createSphere()
+        // let p_2 = new Node(21, 10, 10, -10, 0, 0,.01)
+        // let mesh_2 = p_2.createSphere()
 
-        scene.add(mesh_0)
-        scene.add(mesh_1)
-        scene.add(mesh_2)
-        objects.push(mesh_0)
-        objects.push(mesh_1)
-        objects.push(mesh_2)
+        // scene.add(mesh_0)
+        // scene.add(mesh_1)
+        // scene.add(mesh_2)
+        // objects.push(mesh_0)
+        // objects.push(mesh_1)
+        // objects.push(mesh_2)
         
-        physicsObjects.push(p_0, p_1, p_2)
-        physicsObjectsCreated = true
+        // physicsObjects.push(p_0, p_1, p_2)
+        // physicsObjectsCreated = true
 
         //START       
-        // // console.log("Creating blank Box Grid")
-        // let sq_width = 12
-        // let spacing = 3
+        // console.log("Creating blank Box Grid")
+        let sq_width = 12
+        let spacing = 3
 
-        // //Generate Grid of Boxes
-        // let x = 0
-        // let z = 0
-        // for (let i = 0; i < sq_width; i++) {
-        //     x = x + spacing
-        //     for (let j = 0; j < sq_width; j++) {
-        //         z = z + spacing
-        //         // let p = Sphere(x, 2, z, 1, 10, 10)
-        //         // scene.add(p)
-        //         // objects.push(p)
+        //Generate Grid of Boxes
+        let x = 0
+        let z = 0
+        for (let i = 0; i < sq_width; i++) {
+            x = x + spacing
+            for (let j = 0; j < sq_width; j++) {
+                z = z + spacing
+                // let p = Sphere(x, 2, z, 1, 10, 10)
+                // scene.add(p)
+                // objects.push(p)
 
-        //         //INITIALIZE PHYSICS NODE
-        //         let p = new Node(Math.random()*20, x, Math.random()*10, z)
-        //         let mesh = p.createSphere()
+                //INITIALIZE PHYSICS NODE
+                let p = new Node(Math.random()*20, x, Math.random()*10, z, 0, 0)
+                let mesh = p.createSphere()
 
-        //         scene.add(mesh)
-        //         objects.push(mesh)
-        //         physicsObjects.push(p)
-        //         physicsObjectsCreated = true
-        //     }
-        //     z = z - sq_width * spacing
-        // }
+                scene.add(mesh)
+                objects.push(mesh)
+                physicsObjects.push(p)
+                physicsObjectsCreated = true
+            }
+            z = z - sq_width * spacing
+        }
         //END
     }
     setRaycaster = (event) => {
@@ -674,7 +675,7 @@ function animate() {
     //PHYSICS UPDATE
     if (physicsObjectsCreated) {
         //LIMIT FRAMERATE
-        if (frameIndex % 10 == 0) {
+        if (frameIndex % 1 == 0) {
             //SETUP TEMPORARY FORCE BIN
             let objectForces = []
             //ITERATE THROUGH VERTICES
@@ -690,9 +691,9 @@ function animate() {
 
                         //CONSTRAIN D
 
-                        d = constrain(d, 50, 100)
+                        d = constrain(d, 5, 10)
 
-                        let strength = .002 * ((m0 * m1)/ d**2)
+                        let strength = .00002 * ((m0 * m1)/ d**2)
                         let attr_force = v.multiplyScalar(strength)
                         //ADD TO BUILDING NODE FORCE
                         i_force.add(attr_force)
