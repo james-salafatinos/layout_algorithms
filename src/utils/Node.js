@@ -1,12 +1,15 @@
 class Node {
-    constructor(m, x, y, z, ivx = 0, ivy = 0, ivz = 0) {
+    constructor(m, x, y, z, offset, ivx = 0, ivy = 0, ivz = 0, massScalar = 1) {
         this.mass = m
         this.pos = new THREE.Vector3(x, y, z)
-        this.velocity = new THREE.Vector3(0,0,0)
-        this.acceleration = new THREE.Vector3(ivx,ivy,ivz)
+        this.velocity = new THREE.Vector3(0, 0, 0)
+        this.acceleration = new THREE.Vector3(ivx, ivy, ivz)
         this.dirVector = new THREE.Vector3()
         this.mesh
         this.lookDir
+        this.hasBeenRaycast
+        this.offset = offset
+        this.massScalar = massScalar
     }
     createSphere() {
         let mat = new THREE.MeshPhongMaterial({
@@ -15,11 +18,16 @@ class Node {
             depthTest: true,
             side: THREE.DoubleSide
         });
-        let geo = new THREE.SphereGeometry(this.mass/20, 5, 5)
+        let geo = new THREE.SphereGeometry(this.mass * this.massScalar, 5, 5)
         let mesh = new THREE.Mesh(geo, mat)
         mesh.position.x = this.x
         mesh.position.y = this.y
         mesh.position.z = this.z
+
+
+        mesh.userData.offset = this.offset
+        console.log("Node.js", this.offset)
+
         this.mesh = mesh
         return mesh
     }
@@ -29,7 +37,14 @@ class Node {
         this.mesh.position.y = this.pos.y
         this.mesh.position.z = this.pos.z
 
-        this.mesh.material.color = new THREE.Color(`hsl(${100 - (-1*this.velocity.length())*10**3}, 100%, 50%)`);
+        if (this.mesh.userData.hasBeenRaycast) {
+        
+            this.mesh.material.color = new THREE.Color(`hsl(${50}, 100%, 100%)`);
+
+        } else{
+            this.mesh.material.color = new THREE.Color(`hsl(${200 - (-1 * this.velocity.length()) * 10 ** 3}, 100%, 50%)`);
+        }
+
 
     }
 
@@ -54,8 +69,8 @@ class Node {
         return dir
     }
 
-    getDistanceTo = function (otherObject){
-        var distance = this.pos.distanceTo( otherObject.pos);
+    getDistanceTo = function (otherObject) {
+        var distance = this.pos.distanceTo(otherObject.pos);
         return distance
     }
 
@@ -64,7 +79,7 @@ class Node {
         let vec = this.pos.clone().sub(otherObject.pos.clone()).normalize()
         let distance = this.pos.clone().distanceTo(otherObject.pos.clone())
         distance = this._constrain(distance, 2, 5)
-        
+
         // console.log(vec,distance)
         // distance.clamp(2.0, 5.0);
         // console.log(GRAVITY, this.mass , otherObject.mass , distance )

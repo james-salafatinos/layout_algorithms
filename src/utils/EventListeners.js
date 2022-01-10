@@ -2,7 +2,9 @@
 
 //Movement
 window.addEventListener('keydown', (event) => {
-
+    cameraState.isCameraFollowing = false
+    // Controls
+    controls.lock();
     switch (event.code) {
 
         case 'ArrowUp':
@@ -42,11 +44,13 @@ window.addEventListener('keydown', (event) => {
 });
 
 window.addEventListener('keyup', (event) => {
-
+    // Controls
+    controls.lock();
     switch (event.code) {
 
         case 'ArrowUp':
         case 'KeyW':
+
             moveForward = false;
             break;
 
@@ -135,6 +139,12 @@ window.addEventListener('wheel', (event) => {
     camera.updateProjectionMatrix(); /// make the changes take effect
 }, { passive: false });
 
+window.addEventListener('dblclick', function () {
+
+    // Some dazzling stuff happens be here
+    cameraState.isCameraFollowing = true
+
+});
 
 window.addEventListener('click', function (event) {
 
@@ -142,8 +152,7 @@ window.addEventListener('click', function (event) {
     if (event.button == 0) {
 
 
-        // Controls
-        controls.lock();
+
         // Controls
         let scale_from_camera = 10
         let camera_pos = { x: camera.position.x, y: camera.position.y, z: camera.position.z }
@@ -172,25 +181,26 @@ window.addEventListener('click', function (event) {
 
 window.addEventListener('mousedown', function (event) {
 
+
     //LEFT CLICK
     if (event.button == 0) {
         setRaycaster(event);
-        dragging = true;
+        isDragging = true;
     }
 
     //RIGHT CLICK
     if (event.button == 2) {
         console.log("Zoom hold start")
-        zoom_holding = true
+        isZoomHolding = true
         setZoom(2)
     }
 });
 
 window.addEventListener('mousemove', function (event) {
-    //DRAGGING & LEFT CLICK
-    if (dragging) {
+    //isDragging & LEFT CLICK
+    if (isDragging) {
         setRaycaster(event);
-        console.log('Dragging')
+        console.log('isDragging')
 
         //SHOOT
         if (frameIndex % 10 == 0) {
@@ -199,10 +209,10 @@ window.addEventListener('mousemove', function (event) {
             let camera_look = cameraLookDir(camera)
             //Create Node
             let node = new Node(
-                5, camera_pos.x + scale_from_camera * camera_look.x, 
-                camera_pos.y + scale_from_camera * camera_look.y, 
+                5, camera_pos.x + scale_from_camera * camera_look.x,
+                camera_pos.y + scale_from_camera * camera_look.y,
                 camera_pos.z + scale_from_camera * camera_look.z,
-                )
+            )
             node.lookDir = lookDir.clone()
             let mesh = node.createSphere()
             bulletObjectsCreated = true
@@ -215,7 +225,7 @@ window.addEventListener('mousemove', function (event) {
         }
 
     }
-    if (zoom_holding) {
+    if (isZoomHolding) {
         console.log('Zoom Holding')
         event.preventDefault(); /// prevent scrolling
         setZoom(2)
@@ -226,13 +236,13 @@ window.addEventListener('mousemove', function (event) {
 
 window.addEventListener('mouseup', function (event) {
 
-    console.log("Dragging end, Zoom End")
-    if (dragging && event.button == 0) {
-        dragging = false;
+    console.log("isDragging end, Zoom End")
+    if (isDragging && event.button == 0) {
+        isDragging = false;
     }
 
-    if (zoom_holding && event.button == 2) {
-        zoom_holding = false;
+    if (isZoomHolding && event.button == 2) {
+        isZoomHolding = false;
         setZoom(1.125)
     }
 

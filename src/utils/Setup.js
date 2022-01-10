@@ -1,7 +1,8 @@
 function setup() {
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
     camera.position.y = 10;
-
+    camera.position.z = 30;
+    camera.position.x = 30;
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0000f);
     scene.fog = new THREE.Fog(0xffffff, 100, 750);
@@ -14,6 +15,11 @@ function setup() {
 
     const blocker = document.getElementById('blocker');
     const instructions = document.getElementById('instructions');
+    
+    
+    const container = document.getElementById( 'container' );
+    stats = new Stats();
+    container.appendChild( stats.dom );
 
     controls.addEventListener('lock', function () {
         instructions.style.display = 'none';
@@ -36,23 +42,65 @@ function setup() {
         return vector;
     }
 
-    
+
     /**
      * GUI
      */
-     let gui = new GUI()
-     const cameraFolder = gui.addFolder('Camera')
-     cameraFolder.add(camera.position, 'x', 0, 15)
-     cameraFolder.add(camera.position, 'y', 0, 15)
-     cameraFolder.add(camera.position, 'z', 0, 15)
-     // cameraFolder.open()
- 
-     renderer = new THREE.WebGLRenderer({ antialias: true });
+    let gui = new GUI()
+    const cameraFolder = gui.addFolder('Camera')
+    cameraFolder.add(cameraState, 'isCameraFollowing')
+    cameraFolder.open()
+
+    const raycastFolder = gui.addFolder('Raycast')
+    raycastFolder.add(raycastState, 'offset')
+    raycastFolder.open()
+
+    const bloomFolder = gui.addFolder('Bloom')
+    bloomFolder.add(bloomParams, 'exposure', 0.1, 2).onChange(function (value) {
+
+        renderer.toneMappingExposure = Math.pow(value, 4.0);
+
+    });
+
+    bloomFolder.add(bloomParams, 'bloomThreshold', 0.0, 1.0).onChange(function (value) {
+
+        bloomPass.threshold = Number(value);
+
+    });
+
+    bloomFolder.add(bloomParams, 'bloomStrength', 0.0, 3.0).onChange(function (value) {
+
+        bloomPass.strength = Number(value);
+
+    });
+
+    bloomFolder.add(bloomParams, 'bloomRadius', 0.0, 1.0).step(0.01).onChange(function (value) {
+
+        bloomPass.radius = Number(value);
+
+    });
+
+
+
+    scene.add(new THREE.AmbientLight(0x404040));
+
+    // const pointLight = new THREE.PointLight(0xffffff, .4);
+    // camera.add(pointLight);
+    renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
+    const renderScene = new RenderPass(scene, camera);
 
+    const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+    bloomPass.threshold = bloomParams.bloomThreshold;
+    bloomPass.strength = bloomParams.bloomStrength;
+    bloomPass.radius = bloomParams.bloomRadius;
 
+    composer = new EffectComposer(renderer);
+
+    composer.addPass(renderScene);
+    composer.addPass(bloomPass);
 
 }

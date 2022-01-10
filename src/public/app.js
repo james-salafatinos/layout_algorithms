@@ -3,10 +3,16 @@ import { PointerLockControls } from "/modules/PointerLockControls.js";
 import { GUI } from "/modules/dat.gui.module.js";
 import { GLTFLoader } from '/modules/GLTFLoader.js';
 
+import { EffectComposer } from '/modules/EffectComposer.js';
+import { RenderPass } from '/modules/RenderPass.js';
+// import { GlitchPass } from '/modules/GlitchPass.js';
+import { UnrealBloomPass } from '/modules/UnrealBloomPass.js';
+import Stats from '/modules/stats.module.js';
 
 
 //THREE JS
-let camera, scene, renderer
+let camera, scene, renderer, composer
+let stats;
 //CONTROLS & INTERACTIONS
 let controls;
 let moveForward = false;
@@ -15,11 +21,15 @@ let moveLeft = false;
 let moveRight = false;
 let moveUp = false;
 let moveDown = false;
-let dragging = false;
-let zoom_holding = false;
 let raycaster;
 let lookDir = new THREE.Vector3()
 let pointer = new THREE.Vector2();
+
+//STATE
+let cameraState = {isCameraFollowing: true}
+let raycastState = {offset: -1}
+let isDragging = false;
+let isZoomHolding = false;
 //PERFORMANCE
 let prevTime = performance.now();
 //PHYSICS
@@ -30,10 +40,9 @@ let GRAVITY = 1
 let crosshair;
 let arrow
 //OBJECT GROUPS
-let meshes = []
-let objects = [];
 let physicsObjectsCreated = false
 let physicsObjects = []
+let physicsObjectsMesh = [];
 let bulletObjectsCreated = false
 let bulletObjects = []
 //HELPERS
@@ -44,6 +53,13 @@ let flyParams = {
     flySpeed: 500,
     flyRelease: 30
 }
+
+const bloomParams = {
+    exposure: 1,
+    bloomStrength: 1.5,
+    bloomThreshold: 2,
+    bloomRadius: .7
+};
 // FUNCTIONS
 let mouseDown
 let mouseMove
@@ -53,16 +69,20 @@ let setRaycaster
 let cameraLookDir
 let setZoom
 let constrain
+let follow
 
 class Node {
-    constructor(m, x, y, z, ivx = 0, ivy = 0, ivz = 0) {
+    constructor(m, x, y, z, offset, ivx = 0, ivy = 0, ivz = 0, massScalar = 1) {
         this.mass = m
         this.pos = new THREE.Vector3(x, y, z)
-        this.velocity = new THREE.Vector3(0,0,0)
-        this.acceleration = new THREE.Vector3(ivx,ivy,ivz)
+        this.velocity = new THREE.Vector3(0, 0, 0)
+        this.acceleration = new THREE.Vector3(ivx, ivy, ivz)
         this.dirVector = new THREE.Vector3()
         this.mesh
         this.lookDir
+        this.hasBeenRaycast
+        this.offset = offset
+        this.massScalar = massScalar
     }
     createSphere() {
         let mat = new THREE.MeshPhongMaterial({
@@ -71,11 +91,16 @@ class Node {
             depthTest: true,
             side: THREE.DoubleSide
         });
-        let geo = new THREE.SphereGeometry(this.mass/20, 5, 5)
+        let geo = new THREE.SphereGeometry(this.mass * this.massScalar, 5, 5)
         let mesh = new THREE.Mesh(geo, mat)
         mesh.position.x = this.x
         mesh.position.y = this.y
         mesh.position.z = this.z
+
+
+        mesh.userData.offset = this.offset
+        console.log("Node.js", this.offset)
+
         this.mesh = mesh
         return mesh
     }
@@ -85,7 +110,14 @@ class Node {
         this.mesh.position.y = this.pos.y
         this.mesh.position.z = this.pos.z
 
-        this.mesh.material.color = new THREE.Color(`hsl(${100 - (-1*this.velocity.length())*10**3}, 100%, 50%)`);
+        if (this.mesh.userData.hasBeenRaycast) {
+        
+            this.mesh.material.color = new THREE.Color(`hsl(${50}, 100%, 100%)`);
+
+        } else{
+            this.mesh.material.color = new THREE.Color(`hsl(${200 - (-1 * this.velocity.length()) * 10 ** 3}, 100%, 50%)`);
+        }
+
 
     }
 
@@ -110,8 +142,8 @@ class Node {
         return dir
     }
 
-    getDistanceTo = function (otherObject){
-        var distance = this.pos.distanceTo( otherObject.pos);
+    getDistanceTo = function (otherObject) {
+        var distance = this.pos.distanceTo(otherObject.pos);
         return distance
     }
 
@@ -120,7 +152,7 @@ class Node {
         let vec = this.pos.clone().sub(otherObject.pos.clone()).normalize()
         let distance = this.pos.clone().distanceTo(otherObject.pos.clone())
         distance = this._constrain(distance, 2, 5)
-        
+
         // console.log(vec,distance)
         // distance.clamp(2.0, 5.0);
         // console.log(GRAVITY, this.mass , otherObject.mass , distance )
@@ -143,6 +175,36 @@ class Node {
 
 
 
+
+
+follow = (camera, physicsObjects, offset, lookAt = false) => {
+    console.log(offset)
+
+
+    if (offset < 0){
+
+        return null 
+    }
+    // console.log("FOLLOW", physicsObjects,offset)
+
+    
+    cameraState.isCameraFollowing = true
+    let dx = physicsObjects[offset].velocity.x
+    let dy = physicsObjects[offset].velocity.y
+    let dz = physicsObjects[offset].velocity.z
+    // console.log(dx,dy,dz)
+    camera.position.x = physicsObjects[offset].mesh.position.x -  0 + dx*physicsObjects[offset].mass / 55 
+    camera.position.y = physicsObjects[offset].mesh.position.y + 2 + dy*physicsObjects[offset].mass / 55
+    camera.position.z = physicsObjects[offset].mesh.position.z - 0 + dz*physicsObjects[offset].mass / 55 
+
+    if (lookAt) {
+        camera.lookAt(physicsObjects[offset].mesh.position)
+    }
+
+}
+
+
+
 setup();
 init();
 animate();
@@ -150,7 +212,8 @@ animate();
 function setup() {
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
     camera.position.y = 10;
-
+    camera.position.z = 30;
+    camera.position.x = 30;
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0000f);
     scene.fog = new THREE.Fog(0xffffff, 100, 750);
@@ -163,6 +226,11 @@ function setup() {
 
     const blocker = document.getElementById('blocker');
     const instructions = document.getElementById('instructions');
+    
+    
+    const container = document.getElementById( 'container' );
+    stats = new Stats();
+    container.appendChild( stats.dom );
 
     controls.addEventListener('lock', function () {
         instructions.style.display = 'none';
@@ -185,24 +253,66 @@ function setup() {
         return vector;
     }
 
-    
+
     /**
      * GUI
      */
-     let gui = new GUI()
-     const cameraFolder = gui.addFolder('Camera')
-     cameraFolder.add(camera.position, 'x', 0, 15)
-     cameraFolder.add(camera.position, 'y', 0, 15)
-     cameraFolder.add(camera.position, 'z', 0, 15)
-     // cameraFolder.open()
- 
-     renderer = new THREE.WebGLRenderer({ antialias: true });
+    let gui = new GUI()
+    const cameraFolder = gui.addFolder('Camera')
+    cameraFolder.add(cameraState, 'isCameraFollowing')
+    cameraFolder.open()
+
+    const raycastFolder = gui.addFolder('Raycast')
+    raycastFolder.add(raycastState, 'offset')
+    raycastFolder.open()
+
+    const bloomFolder = gui.addFolder('Bloom')
+    bloomFolder.add(bloomParams, 'exposure', 0.1, 2).onChange(function (value) {
+
+        renderer.toneMappingExposure = Math.pow(value, 4.0);
+
+    });
+
+    bloomFolder.add(bloomParams, 'bloomThreshold', 0.0, 1.0).onChange(function (value) {
+
+        bloomPass.threshold = Number(value);
+
+    });
+
+    bloomFolder.add(bloomParams, 'bloomStrength', 0.0, 3.0).onChange(function (value) {
+
+        bloomPass.strength = Number(value);
+
+    });
+
+    bloomFolder.add(bloomParams, 'bloomRadius', 0.0, 1.0).step(0.01).onChange(function (value) {
+
+        bloomPass.radius = Number(value);
+
+    });
+
+
+
+    scene.add(new THREE.AmbientLight(0x404040));
+
+    // const pointLight = new THREE.PointLight(0xffffff, .4);
+    // camera.add(pointLight);
+    renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
+    const renderScene = new RenderPass(scene, camera);
 
+    const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+    bloomPass.threshold = bloomParams.bloomThreshold;
+    bloomPass.strength = bloomParams.bloomStrength;
+    bloomPass.radius = bloomParams.bloomRadius;
 
+    composer = new EffectComposer(renderer);
+
+    composer.addPass(renderScene);
+    composer.addPass(bloomPass);
 
 }
 
@@ -250,66 +360,74 @@ function init() {
     }
 
     let createGrid = () => {
-
-        // let p_0 = new Node(20, -10, 10, 10, .01,0,0)
+        let _offset = 0
+        // let p_0 = new Node(1000, -50, 10, 10, _offset, 0,0,0, .01)
         // let mesh_0 = p_0.createSphere()
-
-        // let p_1 = new Node(30, 10, -10, 10, 0,-.01,0)
-        // let mesh_1 = p_1.createSphere()
-
-        // let p_2 = new Node(21, 10, 10, -10, 0, 0,.01)
-        // let mesh_2 = p_2.createSphere()
-
         // scene.add(mesh_0)
-        // scene.add(mesh_1)
-        // scene.add(mesh_2)
-        // objects.push(mesh_0)
-        // objects.push(mesh_1)
-        // objects.push(mesh_2)
-        
-        // physicsObjects.push(p_0, p_1, p_2)
+        // physicsObjectsMesh.push(mesh_0)
+        // physicsObjects.push(p_0)
+        // _offset +=1
         // physicsObjectsCreated = true
+
+
+
 
         //START       
         // console.log("Creating blank Box Grid")
-        let sq_width = 4
-        let spacing = 25
+        let sq_width = 12
+        let spacing = 9
 
-        //Generate Grid of Boxes
+        //Generate Grid of Physics Objects
         let x = 0
         let z = 0
+        
         for (let i = 0; i < sq_width; i++) {
             x = x + spacing
+ 
             for (let j = 0; j < sq_width; j++) {
                 z = z + spacing
-                // let p = Sphere(x, 2, z, 1, 10, 10)
-                // scene.add(p)
-                // objects.push(p)
-
-                //INITIALIZE PHYSICS NODE
-                let p = new Node(Math.random()*20, x, Math.random()*10, z, 0, 0)
+        
+                //INITIALIZE & CREATE PHYSICS NODE
+                let p = new Node(Math.random(), x, Math.random()*10, z, _offset)
                 let mesh = p.createSphere()
+                
+        
 
+                //Add to Scene
                 scene.add(mesh)
-                objects.push(mesh)
+
+                //Add to global lists
+                
+                physicsObjectsMesh.push(mesh)
                 physicsObjects.push(p)
+                _offset +=1
                 physicsObjectsCreated = true
+
+                //Adjust number of created objects
+               
             }
             z = z - sq_width * spacing
+            
         }
         //END
     }
+
     setRaycaster = (event) => {
 
         raycaster.setFromCamera(pointer, camera);
         raycaster.near = 10;
         raycaster.far = 100;
-        const intersections = raycaster.intersectObjects(objects, false);
+        const intersections = raycaster.intersectObjects(physicsObjectsMesh, false);
+        // console.log('physics objects', physicsObjects, 'objects',objects)
         const onObject = intersections.length > 0;
         if (onObject) {
             intersections.forEach(element => {
-                console.log("RAYCAST HIT: ", element)
+                console.log("@setRaycaster, element.object.userData.offset", element.object.userData.offset)
+                raycastState.offset = element.object.userData.offset
+                element.object.userData.hasBeenRaycast = true
                 element.object.material.color = new THREE.Color(0xfd6012)
+                
+                
             })
 
         }
@@ -352,7 +470,7 @@ function init() {
 
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-        let material = new THREE.PointsMaterial({ size: .07, sizeAttenuation: true, alphaTest: 0.5, transparent: true });
+        let material = new THREE.PointsMaterial({ size: .7, sizeAttenuation: true, alphaTest: 0.2, transparent: true });
         material.color.setHSL(.6, 0.8, 0.9);
         const particles = new THREE.Points(geometry, material);
         scene.add(particles);
@@ -387,7 +505,9 @@ function init() {
 
 //Movement
 window.addEventListener('keydown', (event) => {
-
+    cameraState.isCameraFollowing = false
+    // Controls
+    controls.lock();
     switch (event.code) {
 
         case 'ArrowUp':
@@ -427,11 +547,13 @@ window.addEventListener('keydown', (event) => {
 });
 
 window.addEventListener('keyup', (event) => {
-
+    // Controls
+    controls.lock();
     switch (event.code) {
 
         case 'ArrowUp':
         case 'KeyW':
+
             moveForward = false;
             break;
 
@@ -520,6 +642,12 @@ window.addEventListener('wheel', (event) => {
     camera.updateProjectionMatrix(); /// make the changes take effect
 }, { passive: false });
 
+window.addEventListener('dblclick', function () {
+
+    // Some dazzling stuff happens be here
+    cameraState.isCameraFollowing = true
+
+});
 
 window.addEventListener('click', function (event) {
 
@@ -527,8 +655,7 @@ window.addEventListener('click', function (event) {
     if (event.button == 0) {
 
 
-        // Controls
-        controls.lock();
+
         // Controls
         let scale_from_camera = 10
         let camera_pos = { x: camera.position.x, y: camera.position.y, z: camera.position.z }
@@ -557,25 +684,26 @@ window.addEventListener('click', function (event) {
 
 window.addEventListener('mousedown', function (event) {
 
+
     //LEFT CLICK
     if (event.button == 0) {
         setRaycaster(event);
-        dragging = true;
+        isDragging = true;
     }
 
     //RIGHT CLICK
     if (event.button == 2) {
         console.log("Zoom hold start")
-        zoom_holding = true
+        isZoomHolding = true
         setZoom(2)
     }
 });
 
 window.addEventListener('mousemove', function (event) {
-    //DRAGGING & LEFT CLICK
-    if (dragging) {
+    //isDragging & LEFT CLICK
+    if (isDragging) {
         setRaycaster(event);
-        console.log('Dragging')
+        console.log('isDragging')
 
         //SHOOT
         if (frameIndex % 10 == 0) {
@@ -584,10 +712,10 @@ window.addEventListener('mousemove', function (event) {
             let camera_look = cameraLookDir(camera)
             //Create Node
             let node = new Node(
-                5, camera_pos.x + scale_from_camera * camera_look.x, 
-                camera_pos.y + scale_from_camera * camera_look.y, 
+                5, camera_pos.x + scale_from_camera * camera_look.x,
+                camera_pos.y + scale_from_camera * camera_look.y,
                 camera_pos.z + scale_from_camera * camera_look.z,
-                )
+            )
             node.lookDir = lookDir.clone()
             let mesh = node.createSphere()
             bulletObjectsCreated = true
@@ -600,7 +728,7 @@ window.addEventListener('mousemove', function (event) {
         }
 
     }
-    if (zoom_holding) {
+    if (isZoomHolding) {
         console.log('Zoom Holding')
         event.preventDefault(); /// prevent scrolling
         setZoom(2)
@@ -611,13 +739,13 @@ window.addEventListener('mousemove', function (event) {
 
 window.addEventListener('mouseup', function (event) {
 
-    console.log("Dragging end, Zoom End")
-    if (dragging && event.button == 0) {
-        dragging = false;
+    console.log("isDragging end, Zoom End")
+    if (isDragging && event.button == 0) {
+        isDragging = false;
     }
 
-    if (zoom_holding && event.button == 2) {
-        zoom_holding = false;
+    if (isZoomHolding && event.button == 2) {
+        isZoomHolding = false;
         setZoom(1.125)
     }
 
@@ -644,6 +772,9 @@ function animate() {
     lookDir.x = cameraLookDir(camera).x
     lookDir.y = cameraLookDir(camera).y
     lookDir.z = cameraLookDir(camera).z
+
+
+
 
     //If Pointerlock controls active
     if (controls.isLocked === true) {
@@ -691,22 +822,12 @@ function animate() {
                         let d = physicsObjects[i].getDistanceTo(physicsObjects[j])
                         let m0 = physicsObjects[i].mass
                         let m1 = physicsObjects[j].mass
-
-                        //CONSTRAIN D
-
-                        d = constrain(d, 5, 10)
-
-                        let strength = .00002 * ((m0 * m1)/ d**2)
+                        d = constrain(d, 1, 200)
+                        let strength = .001 * ((m0 * m1) / d ** 2)
                         let attr_force = v.multiplyScalar(strength)
                         //ADD TO BUILDING NODE FORCE
                         i_force.add(attr_force)
-                        // //SCALE
-                        // let _x = (Math.random() * 2 - 1) * .01
-                        // let _y = (Math.random() * 2 - 1) * .01
-                        // let _z = (Math.random() * 2 - 1) * .01
-                        // force.x = _x
-                        // force.y = _y
-                        // force.z = _z
+
                     }
                 }
                 objectForces.push(i_force)
@@ -736,10 +857,17 @@ function animate() {
         });
 
     }
+    if (cameraState.isCameraFollowing) {
+        follow(camera, physicsObjects, raycastState.offset)
+    }
+
 
 
     //Frame Shut Down
     prevTime = time;
-    renderer.render(scene, camera);
+    // renderer.render(scene, camera);
+    
+    composer.render();
+    stats.update();
     frameIndex++;
 }

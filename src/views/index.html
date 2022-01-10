@@ -1,6 +1,10 @@
 <head>
-    <style> body { margin: 0; } </style>
-    
+	<style>
+		body {
+			margin: 0;
+		}
+	</style>
+
 	<style>
 		#blocker {
 			position: absolute;
@@ -75,25 +79,30 @@
 		}
 	</style>
 
-  </head>
-  
-  <body>
-    <div id="blocker">
+</head>
 
-      <div id="instructions">
-        <div class="lds-ripple"><div></div><div></div></div>
-        <p style="font-size:36px">
-          Welcome
-        </p>
-        <p style="text-align: left">
-          <b>Move:</b> WASD, Shift, Space<br />
-          <b>Open Page:</b> E <br />
-          <b>Remove Pages:</b> F <br />
-          <b>Look:</b> MOUSE
-        </p>
-      </div>
-    </div>
-  
-    <script src="/public/app.js" type="module"></script>
-    
-  </body>
+<body>
+	<div id='container'>
+		<div id="blocker">
+
+			<div id="instructions">
+				<div class="lds-ripple">
+					<div></div>
+					<div></div>
+				</div>
+				<p style="font-size:36px">
+					Welcome
+				</p>
+				<p style="text-align: left">
+					<b>Move:</b> WASD, Shift, Space<br />
+					<b>Open Page:</b> E <br />
+					<b>Remove Pages:</b> F <br />
+					<b>Look:</b> MOUSE
+				</p>
+			</div>
+		</div>
+	</div>
+
+	<script src="/public/app.js" type="module"></script>
+
+</body>

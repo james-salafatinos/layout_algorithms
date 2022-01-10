@@ -8,6 +8,9 @@ function animate() {
     lookDir.y = cameraLookDir(camera).y
     lookDir.z = cameraLookDir(camera).z
 
+
+
+
     //If Pointerlock controls active
     if (controls.isLocked === true) {
 
@@ -54,22 +57,12 @@ function animate() {
                         let d = physicsObjects[i].getDistanceTo(physicsObjects[j])
                         let m0 = physicsObjects[i].mass
                         let m1 = physicsObjects[j].mass
-
-                        //CONSTRAIN D
-
-                        d = constrain(d, 5, 10)
-
-                        let strength = .00002 * ((m0 * m1)/ d**2)
+                        d = constrain(d, 1, 200)
+                        let strength = .001 * ((m0 * m1) / d ** 2)
                         let attr_force = v.multiplyScalar(strength)
                         //ADD TO BUILDING NODE FORCE
                         i_force.add(attr_force)
-                        // //SCALE
-                        // let _x = (Math.random() * 2 - 1) * .01
-                        // let _y = (Math.random() * 2 - 1) * .01
-                        // let _z = (Math.random() * 2 - 1) * .01
-                        // force.x = _x
-                        // force.y = _y
-                        // force.z = _z
+
                     }
                 }
                 objectForces.push(i_force)
@@ -99,10 +92,17 @@ function animate() {
         });
 
     }
+    if (cameraState.isCameraFollowing) {
+        follow(camera, physicsObjects, raycastState.offset)
+    }
+
 
 
     //Frame Shut Down
     prevTime = time;
-    renderer.render(scene, camera);
+    // renderer.render(scene, camera);
+    
+    composer.render();
+    stats.update();
     frameIndex++;
 }

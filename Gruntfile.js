@@ -21,7 +21,7 @@ module.exports = function (grunt) {
 
         concat: {
             public: {
-                src: ['src/utils/Imports.js', 'src/utils/GlobalVariables.js','src/utils/Node.js','src/utils/Run.js','src/utils/Setup.js','src/utils/Init.js', 'src/utils/EventListeners.js',  'src/utils/Animate.js'],
+                src: ['src/utils/Imports.js', 'src/utils/GlobalVariables.js','src/utils/Node.js','src/utils/Follow.js','src/utils/Run.js','src/utils/Setup.js','src/utils/Init.js', 'src/utils/EventListeners.js',  'src/utils/Animate.js'],
                 dest: 'src/public/app.js',
             },
         },

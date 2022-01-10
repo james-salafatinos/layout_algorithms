@@ -42,66 +42,74 @@ function init() {
     }
 
     let createGrid = () => {
-
-        // let p_0 = new Node(20, -10, 10, 10, .01,0,0)
+        let _offset = 0
+        // let p_0 = new Node(1000, -50, 10, 10, _offset, 0,0,0, .01)
         // let mesh_0 = p_0.createSphere()
-
-        // let p_1 = new Node(30, 10, -10, 10, 0,-.01,0)
-        // let mesh_1 = p_1.createSphere()
-
-        // let p_2 = new Node(21, 10, 10, -10, 0, 0,.01)
-        // let mesh_2 = p_2.createSphere()
-
         // scene.add(mesh_0)
-        // scene.add(mesh_1)
-        // scene.add(mesh_2)
-        // objects.push(mesh_0)
-        // objects.push(mesh_1)
-        // objects.push(mesh_2)
-        
-        // physicsObjects.push(p_0, p_1, p_2)
+        // physicsObjectsMesh.push(mesh_0)
+        // physicsObjects.push(p_0)
+        // _offset +=1
         // physicsObjectsCreated = true
+
+
+
 
         //START       
         // console.log("Creating blank Box Grid")
-        let sq_width = 4
-        let spacing = 25
+        let sq_width = 12
+        let spacing = 9
 
-        //Generate Grid of Boxes
+        //Generate Grid of Physics Objects
         let x = 0
         let z = 0
+        
         for (let i = 0; i < sq_width; i++) {
             x = x + spacing
+ 
             for (let j = 0; j < sq_width; j++) {
                 z = z + spacing
-                // let p = Sphere(x, 2, z, 1, 10, 10)
-                // scene.add(p)
-                // objects.push(p)
-
-                //INITIALIZE PHYSICS NODE
-                let p = new Node(Math.random()*20, x, Math.random()*10, z, 0, 0)
+        
+                //INITIALIZE & CREATE PHYSICS NODE
+                let p = new Node(Math.random(), x, Math.random()*10, z, _offset)
                 let mesh = p.createSphere()
+                
+        
 
+                //Add to Scene
                 scene.add(mesh)
-                objects.push(mesh)
+
+                //Add to global lists
+                
+                physicsObjectsMesh.push(mesh)
                 physicsObjects.push(p)
+                _offset +=1
                 physicsObjectsCreated = true
+
+                //Adjust number of created objects
+               
             }
             z = z - sq_width * spacing
+            
         }
         //END
     }
+
     setRaycaster = (event) => {
 
         raycaster.setFromCamera(pointer, camera);
         raycaster.near = 10;
         raycaster.far = 100;
-        const intersections = raycaster.intersectObjects(objects, false);
+        const intersections = raycaster.intersectObjects(physicsObjectsMesh, false);
+        // console.log('physics objects', physicsObjects, 'objects',objects)
         const onObject = intersections.length > 0;
         if (onObject) {
             intersections.forEach(element => {
-                console.log("RAYCAST HIT: ", element)
+                console.log("@setRaycaster, element.object.userData.offset", element.object.userData.offset)
+                raycastState.offset = element.object.userData.offset
+                element.object.userData.hasBeenRaycast = true
                 element.object.material.color = new THREE.Color(0xfd6012)
+                
+                
             })
 
         }
@@ -144,7 +152,7 @@ function init() {
 
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-        let material = new THREE.PointsMaterial({ size: .07, sizeAttenuation: true, alphaTest: 0.5, transparent: true });
+        let material = new THREE.PointsMaterial({ size: .7, sizeAttenuation: true, alphaTest: 0.2, transparent: true });
         material.color.setHSL(.6, 0.8, 0.9);
         const particles = new THREE.Points(geometry, material);
         scene.add(particles);
